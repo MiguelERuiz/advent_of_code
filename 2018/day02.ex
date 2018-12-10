@@ -15,7 +15,13 @@ defmodule Day02 do
 
   def common_letters do
     puzzle = puzzle()
-    map = calculate_distance(puzzle)
+    map = calculate_distances(puzzle)
+    max_jaros = map |> Enum.map(fn {key, value} -> {key, max_jaro(value)} end)
+    {first, second, _} = common(max_jaros)
+    equal_letters = String.myers_difference(first, second)
+    equal_letters = for {:eq, value} <- equal_letters, do: value
+    equal_letters = List.foldr(equal_letters, "",fn s, acc -> s <> acc end)
+    IO.puts("Star 4: #{equal_letters}")
   end
 
   defp count_list(id), do: count_list(id, %{})
@@ -25,12 +31,12 @@ defmodule Day02 do
     count_list(letters, Map.update(acc, letter, 1, &(&1 + 1)))
   end
 
-  defp calculate_distance(puzzle), do: calculate_distance(puzzle, %{})
+  defp calculate_distances(puzzle), do: calculate_distances(puzzle, %{})
 
-  defp calculate_distance([_element], acc), do: acc
-  defp calculate_distance([element|elements], acc) do
+  defp calculate_distances([_element], acc), do: acc
+  defp calculate_distances([element|elements], acc) do
     distances = jaro(element, elements)
-    calculate_distance(elements, Map.put(acc, element, distances))
+    calculate_distances(elements, Map.put(acc, element, distances))
   end
 
   defp jaro(element, elements), do: jaro(element, %{}, elements)
@@ -38,6 +44,21 @@ defmodule Day02 do
   defp jaro(_, acc, []), do: acc
   defp jaro(element, acc, [piece | pieces]) do
     jaro(element, Map.put(acc, piece, String.jaro_distance(element, piece)), pieces)
+  end
+
+  defp max_jaro(map) do
+    values = Map.values(map)
+    map |> Enum.find(fn {_,v} -> v == Enum.max(values) end)
+  end
+
+  defp common(map_list), do: common(map_list, {"", "", 0})
+
+  defp common([], best_result), do: best_result
+  defp common([{first, {second, jaro}} | results], {_, _, distance}) when jaro > distance do
+    common(results, {first, second, jaro})
+  end
+  defp common([{_, {_, jaro}} | results], {first, second, distance}) when jaro <= distance do
+    common(results, {first, second, distance})
   end
 
   defp puzzle do
